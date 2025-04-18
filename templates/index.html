@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Whale‑Watch Bot</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+    <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.6.umd.min.js"></script>
+  </head>
+  <body>
+    <button id="connectBtn">Connect Trust Wallet</button>
+    <script>
+      const socket = io();
+      const providerOptions = {
+        walletconnect: {
+          package: WalletConnectProvider,
+          options: { infuraId: "YOUR_INFURA_ID" }
+        }
+      };
+      const web3Modal = new window.Web3Modal.default({
+        cacheProvider: false,
+        providerOptions
+      });
+
+      let signer, userAddr;
+      document.getElementById("connectBtn").onclick = async () => {
+        const instance = await web3Modal.connect();
+        const web3Provider = new ethers.providers.Web3Provider(instance);
+        signer = web3Provider.getSigner();
+        userAddr = await signer.getAddress();
+        console.log("Connected:", userAddr);
+      };
+
+      const routerAbi = [
+        "function swapExactETHForTokens(uint amountOutMin,address[] calldata path,address to,uint deadline) payable returns (uint[])",
+        "function swapExactTokensForETH(uint amountIn,uint amountOutMin,address[] calldata path,address to,uint deadline) returns (uint[])"
+      ];
+      const routerAddress = "0xUniswapV2Router02Address".toLowerCase();
+      const WETH = "0xC02aaa39b223FE8D0A0e5C4F27eAD9083C756Cc2".toLowerCase();
+
+      socket.on("trade_signal", async ({ token, side, amount }) => {
+        if (!signer) return console.warn("Wallet not connected");
+        const router = new ethers.Contract(routerAddress, routerAbi, signer);
+        const path = side==="buy" ? [WETH, token] : [token, WETH];
+        const deadline = Math.floor(Date.now()/1000) + 60*20;
+        const amt = ethers.utils.parseUnits(amount, 18);
+
+        try {
+          if (side==="buy") {
+            await router.swapExactETHForTokens(0, path, userAddr, deadline, { value: amt });
+          } else {
+            const tokenContract = new ethers.Contract(token, ["function approve(address,uint256)"], signer);
+            await tokenContract.approve(routerAddress, amt);
+            await router.swapExactTokensForETH(amt, 0, path, userAddr, deadline);
+          }
+          console.log(`Executed ${side} of ${amount}`);
+        } catch (e) {
+          console.error("Trade failed", e);
+        }
+      });
+    </script>
+  </body>
+</html>

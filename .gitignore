@@ -1,0 +1,15 @@
+# Byte‑compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+env/
+venv/
+.env
+
+# VSCode
+.vscode/
+
+# Mac
+.DS_Store
