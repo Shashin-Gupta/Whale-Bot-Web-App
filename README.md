@@ -19,5 +19,6 @@ A Flask + Socket.IO web app that:
 3. Set up environmental variables
     export ETH_NODE_WS="wss://mainnet.infura.io/ws/v3/YOUR_KEY"
     export FLASK_ENV=production
-4. Run
+4. Set up API Keys and Wallet ID
+5. Run
     python app.py
